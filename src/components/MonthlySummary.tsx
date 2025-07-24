@@ -68,6 +68,8 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes }) => {
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (imgProperties.height * pdfWidth) / imgProperties.width;
         
+        pdf.addImage(data, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
         const consultantPart = selectedConsultant === 'Todos' ? '' : `${selectedConsultant}-`;
         pdf.save(`resumen-${consultantPart}${monthName}-${selectedYear}.pdf`);
     } catch (error) {
