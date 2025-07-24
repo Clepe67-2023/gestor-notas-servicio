@@ -1,2 +1,8 @@
-// This file is deprecated. Type definitions have been moved to /src/vite-env.d.ts to resolve module pathing and declaration errors.
+/// <reference types="vite/client" />
+
+declare namespace NodeJS {
+  interface ProcessEnv {
+    readonly API_KEY: string;
+  }
+}
 
