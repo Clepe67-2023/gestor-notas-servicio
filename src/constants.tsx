@@ -1,6 +1,4 @@
 
-import React from 'react';
-
 // 1. CAMBIA EL NOMBRE DE TU EMPRESA AQUÍ
 export const COMPANY_NAME = "Corpopyme Consultores";
 

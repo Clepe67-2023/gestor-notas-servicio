@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { HashRouter, Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { ServiceNote as ServiceNoteType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -30,6 +30,7 @@ const Home = ({ notes }: { notes: ServiceNoteType[] }) => (
                                 <div>
                                     <p className="font-bold text-lg text-slate-800">{note.clientName}</p>
                                     <p className="text-sm text-slate-600">Proyecto: {note.project}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Asesor: {note.consultantName}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm text-slate-600">{new Date(note.date).toLocaleDateString()}</p>
@@ -74,16 +75,6 @@ const ServiceNoteWrapper = ({ notes, setNotes }: { notes: ServiceNoteType[], set
 
 const App: React.FC = () => {
     const [notes, setNotes] = useLocalStorage<ServiceNoteType[]>('serviceNotes', []);
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        // The uuid library might not be ready on first render, this prevents a mismatch.
-        setIsMounted(true); 
-    }, []);
-
-    if (!isMounted) {
-        return null; // or a loading spinner
-    }
 
     return (
         <HashRouter>
@@ -115,3 +106,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

@@ -37,6 +37,7 @@ const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
     const [isPrinting, setIsPrinting] = useState(false);
     const [keywords, setKeywords] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generationError, setGenerationError] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -45,8 +46,13 @@ const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
 
     const handleGenerateDescription = async () => {
         setIsGenerating(true);
-        const generatedDesc = await generateServiceDescription(keywords);
-        setFormData(prev => ({ ...prev, description: generatedDesc }));
+        setGenerationError('');
+        const result = await generateServiceDescription(keywords);
+        if (result.success) {
+            setFormData(prev => ({ ...prev, description: result.data }));
+        } else {
+            setGenerationError(result.data);
+        }
         setIsGenerating(false);
     };
 
@@ -166,6 +172,9 @@ ${formData.consultantName}
                                     <SparklesIcon className="w-5 h-5 mr-2"/> Generar
                                 </Button>
                             </div>
+                            {generationError && (
+                                <p className="mt-2 text-sm text-red-600 no-print">{generationError}</p>
+                            )}
                             <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={6} className="mt-2 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required></textarea>
                         </div>
                         {/* Signatures */}
