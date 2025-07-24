@@ -2,15 +2,7 @@
 // 1. CAMBIA EL NOMBRE DE TU EMPRESA AQUÍ
 export const COMPANY_NAME = "Corpopyme Consultores";
 
-// 2. AÑADE O QUITA ASESORES DE ESTA LISTA
-export const CONSULTANTS = [
-    "Juan Pérez",
-    "María González",
-    "Carlos Rodríguez",
-    "Ana Martínez",
-];
-
-// 3. CAMBIA EL LOGO DE TU EMPRESA AQUÍ
+// 2. CAMBIA EL LOGO DE TU EMPRESA AQUÍ
 // Opción A: Reemplaza este SVG con el tuyo.
 export const COMPANY_LOGO = (
   <svg width="48" height="48" viewBox="0 0 24 24" className="text-blue-600" fill="currentColor">

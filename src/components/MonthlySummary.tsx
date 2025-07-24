@@ -1,17 +1,19 @@
-import { useState, useMemo, useRef } from 'react';
-import { ServiceNote } from '../types';
+import React, { useState, useMemo, useRef } from 'react';
+import { ServiceNote, Client, Project, Consultant } from '../types';
 import Modal from './common/Modal';
 import Button from './common/Button';
 import { PrintIcon, EmailIcon } from './Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { CONSULTANTS } from '../constants';
 
 interface MonthlySummaryProps {
   notes: ServiceNote[];
+  clients: Client[];
+  projects: Project[];
+  consultants: Consultant[];
 }
 
-const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes }) => {
+const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes, clients, projects, consultants }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedConsultant, setSelectedConsultant] = useState('Todos');
@@ -19,12 +21,19 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  const getNoteDetails = (note: ServiceNote) => {
+    const project = projects.find(p => p.id === note.projectId);
+    const client = project ? clients.find(c => c.id === project.clientId) : undefined;
+    const consultant = consultants.find(c => c.id === note.consultantId);
+    return { project, client, consultant };
+  }
+
   const filteredNotes = useMemo(() => {
     return notes.filter(note => {
       const noteDate = new Date(note.date);
       const isMonthMatch = noteDate.getMonth() === selectedMonth;
       const isYearMatch = noteDate.getFullYear() === selectedYear;
-      const isConsultantMatch = selectedConsultant === 'Todos' || note.consultantName === selectedConsultant;
+      const isConsultantMatch = selectedConsultant === 'Todos' || note.consultantId === selectedConsultant;
       return isMonthMatch && isYearMatch && isConsultantMatch;
     });
   }, [notes, selectedMonth, selectedYear, selectedConsultant]);
@@ -62,15 +71,15 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes }) => {
     try {
         const canvas = await html2canvas(element, { scale: 2, useCORS: true });
         const data = canvas.toDataURL('image/png');
-
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgProperties = pdf.getImageProperties(data);
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (imgProperties.height * pdfWidth) / imgProperties.width;
         
         pdf.addImage(data, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-        const consultantPart = selectedConsultant === 'Todos' ? '' : `${selectedConsultant}-`;
+        
+        const consultantName = consultants.find(c => c.id === selectedConsultant)?.name || 'Todos';
+        const consultantPart = selectedConsultant === 'Todos' ? '' : `${consultantName}-`;
         pdf.save(`resumen-${consultantPart}${monthName}-${selectedYear}.pdf`);
     } catch (error) {
         console.error("Error generating PDF:", error);
@@ -80,11 +89,13 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ notes }) => {
     }
   };
 
-  const summaryText = filteredNotes.map(note => 
-    `- ${new Date(note.date).toLocaleDateString()}: ${note.consultantName} - Proyecto "${note.project}" (${calculateTotalHours(note.startTime, note.endTime).toFixed(2)} horas)`
-  ).join('\n');
+  const summaryText = filteredNotes.map(note => {
+    const { project, consultant } = getNoteDetails(note);
+    return `- ${new Date(note.date).toLocaleDateString()}: ${consultant?.name} - Proyecto "${project?.name}" (${calculateTotalHours(note.startTime, note.endTime).toFixed(2)} horas)`
+  }).join('\n');
 
-  const consultantNameForEmail = selectedConsultant === 'Todos' ? 'el equipo' : selectedConsultant;
+  const consultantForEmail = consultants.find(c => c.id === selectedConsultant);
+  const consultantNameForEmail = consultantForEmail ? consultantForEmail.name : 'el equipo';
   
   const emailBody = `
 Estimados,
@@ -99,12 +110,12 @@ Total de horas facturables para el período: ${totalMonthHours.toFixed(2)} horas
 Quedo a su disposición.
 
 Saludos cordiales,
-${selectedConsultant === 'Todos' ? 'El Equipo de Asesores' : selectedConsultant}
+${consultantForEmail ? consultantForEmail.name : 'El Equipo de Asesores'}
   `.trim().replace(/\n/g, '%0A').replace(/ /g, '%20');
 
-  const emailSubject = `Resumen Horas: ${selectedConsultant} - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${selectedYear}`;
-
-  const titleConsultantPart = selectedConsultant === 'Todos' ? '' : `- ${selectedConsultant}`;
+  const emailSubject = `Resumen Horas: ${consultantNameForEmail} - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${selectedYear}`;
+  
+  const titleConsultantPart = consultantForEmail ? `- ${consultantForEmail.name}` : '';
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -114,7 +125,7 @@ ${selectedConsultant === 'Todos' ? 'El Equipo de Asesores' : selectedConsultant}
           <div className="flex items-center space-x-2 mt-4 md:mt-0 no-print">
              <select value={selectedConsultant} onChange={e => setSelectedConsultant(e.target.value)} className="border-slate-300 rounded-md shadow-sm">
                 <option value="Todos">Todos los Asesores</option>
-                {CONSULTANTS.map(name => <option key={name} value={name}>{name}</option>)}
+                {consultants.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} className="border-slate-300 rounded-md shadow-sm">
               {Array.from({ length: 12 }, (_, i) => (
@@ -152,15 +163,18 @@ ${selectedConsultant === 'Todos' ? 'El Equipo de Asesores' : selectedConsultant}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {filteredNotes.length > 0 ? filteredNotes.map(note => (
-                  <tr key={note.id}>
-                    <td className="py-3 px-4 whitespace-nowrap">{note.consultantName}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">{note.clientName}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">{note.project}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">{new Date(note.date).toLocaleDateString()}</td>
-                    <td className="py-3 px-4 whitespace-nowrap text-right font-medium">{calculateTotalHours(note.startTime, note.endTime).toFixed(2)}</td>
-                  </tr>
-                )) : (
+                {filteredNotes.length > 0 ? filteredNotes.map(note => {
+                  const { project, client, consultant } = getNoteDetails(note);
+                  return (
+                    <tr key={note.id}>
+                        <td className="py-3 px-4 whitespace-nowrap">{consultant?.name}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{client?.name}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{project?.name}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{new Date(note.date).toLocaleDateString()}</td>
+                        <td className="py-3 px-4 whitespace-nowrap text-right font-medium">{calculateTotalHours(note.startTime, note.endTime).toFixed(2)}</td>
+                    </tr>
+                  )
+                }) : (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-slate-500">No hay datos para el período seleccionado.</td>
                   </tr>

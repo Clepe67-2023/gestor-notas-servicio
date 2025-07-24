@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { ServiceNote as ServiceNoteType } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { ServiceNote as ServiceNoteType, Client, Project, Consultant } from '../types';
 import Header from './Header';
 import SignaturePad from './SignaturePad';
 import Modal from './common/Modal';
@@ -9,29 +9,36 @@ import { useNavigate } from 'react-router-dom';
 import { PrintIcon, EmailIcon, SparklesIcon } from './Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { CONSULTANTS } from '../constants';
 
 interface ServiceNoteProps {
     note?: ServiceNoteType;
     onSave: (note: ServiceNoteType) => void;
+    clients: Client[];
+    projects: Project[];
+    consultants: Consultant[];
 }
 
-const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
+const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave, clients, projects, consultants }) => {
     const navigate = useNavigate();
     const printRef = useRef<HTMLDivElement>(null);
+    
+    const initialProject = note ? projects.find(p => p.id === note.projectId) : undefined;
+    const initialClient = initialProject ? clients.find(c => c.id === initialProject.clientId) : undefined;
+
     const [formData, setFormData] = useState<Omit<ServiceNoteType, 'id'>>({
-        clientName: note?.clientName || '',
-        project: note?.project || '',
+        projectId: note?.projectId || '',
+        consultantId: note?.consultantId || (consultants[0]?.id || ''),
         format: note?.format || 'Presencial',
         date: note?.date || new Date().toISOString().split('T')[0],
         startTime: note?.startTime || '09:00',
         endTime: note?.endTime || '18:00',
-        consultantName: note?.consultantName || CONSULTANTS[0] || '',
         clientRepresentative: note?.clientRepresentative || '',
         description: note?.description || '',
         consultantSignature: note?.consultantSignature || '',
         clientSignature: note?.clientSignature || '',
     });
+    
+    const [clientName, setClientName] = useState(initialClient?.name || '');
 
     const [isEmailModalOpen, setEmailModalOpen] = useState(false);
     const [isPrinting, setIsPrinting] = useState(false);
@@ -42,6 +49,14 @@ const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const projectId = e.target.value;
+        const project = projects.find(p => p.id === projectId);
+        const client = project ? clients.find(c => c.id === project.clientId) : undefined;
+        setFormData(prev => ({ ...prev, projectId }));
+        setClientName(client?.name || '');
     };
 
     const handleGenerateDescription = async () => {
@@ -63,19 +78,16 @@ const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
         setIsPrinting(true);
 
         try {
-            const canvas = await html2canvas(element, {
-                scale: 2, // Higher scale for better quality
-                useCORS: true,
-            });
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
             const data = canvas.toDataURL('image/png');
-
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgProperties = pdf.getImageProperties(data);
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProperties.height * pdfWidth) / imgProperties.width;
             
+            const project = projects.find(p => p.id === formData.projectId);
             pdf.addImage(data, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`nota-de-servicio-${formData.project || 'general'}.pdf`);
+            pdf.save(`nota-de-servicio-${project?.name || 'general'}.pdf`);
         } catch (error) {
             console.error("Error generating PDF:", error);
             alert("Hubo un error al generar el PDF. Por favor, intente de nuevo.");
@@ -89,10 +101,14 @@ const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave }) => {
         onSave({ ...formData, id: note?.id || '' });
     };
 
-    const emailBody = `
-Estimado(a) ${formData.clientRepresentative || formData.clientName},
+    const { consultantName, projectName, emailBody, emailSubject } = useMemo(() => {
+        const consultant = consultants.find(c => c.id === formData.consultantId);
+        const project = projects.find(p => p.id === formData.projectId);
+        
+        const body = `
+Estimado(a) ${formData.clientRepresentative || clientName},
 
-Adjunto encontrará la nota de servicio correspondiente a la sesión del ${new Date(formData.date).toLocaleDateString()} para el proyecto "${formData.project}".
+Adjunto encontrará la nota de servicio correspondiente a la sesión del ${new Date(formData.date).toLocaleDateString()} para el proyecto "${project?.name}".
 
 Resumen del servicio:
 ${formData.description}
@@ -102,18 +118,26 @@ Por favor, revise el documento y, si está de acuerdo, proceda con su firma de c
 Quedo a su disposición para cualquier consulta.
 
 Saludos cordiales,
-${formData.consultantName}
+${consultant?.name}
     `.trim().replace(/\n/g, '%0A').replace(/ /g, '%20');
     
-    const emailSubject = `Nota de Servicio: Proyecto ${formData.project} - ${new Date(formData.date).toLocaleDateString()}`;
+        const subject = `Nota de Servicio: Proyecto ${project?.name} - ${new Date(formData.date).toLocaleDateString()}`;
+
+        return {
+            consultantName: consultant?.name || '',
+            projectName: project?.name || '',
+            emailBody: body,
+            emailSubject: subject,
+        }
+    }, [formData, consultants, projects, clientName]);
 
     return (
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
             <div className="flex justify-end space-x-3 mb-6 no-print">
-                <Button onClick={handlePrintPdf} isLoading={isPrinting} variant="secondary">
+                <Button onClick={handlePrintPdf} isLoading={isPrinting} variant="secondary" disabled={!formData.projectId}>
                     <PrintIcon className="w-5 h-5 mr-2" /> Imprimir / Guardar PDF
                 </Button>
-                <Button onClick={() => setEmailModalOpen(true)} type="button" variant="secondary">
+                <Button onClick={() => setEmailModalOpen(true)} type="button" variant="secondary" disabled={!formData.projectId}>
                     <EmailIcon className="w-5 h-5 mr-2" /> Preparar Correo
                 </Button>
             </div>
@@ -125,18 +149,23 @@ ${formData.consultantName}
                         {/* Fields */}
                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700">Cliente / Razón Social</label>
-                                <input type="text" name="clientName" value={formData.clientName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
+                                <label className="block text-sm font-medium text-slate-700">Proyecto</label>
+                                <select name="projectId" value={formData.projectId} onChange={handleProjectChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                                    <option value="" disabled>Seleccione un proyecto</option>
+                                    {projects.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({clients.find(c => c.id === p.clientId)?.name})</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700">Proyecto</label>
-                                <input type="text" name="project" value={formData.project} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
+                                <label className="block text-sm font-medium text-slate-700">Cliente / Razón Social</label>
+                                <input type="text" name="clientName" value={clientName} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-slate-100" readOnly />
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-slate-700">Nombre del Asesor</label>
-                                <select name="consultantName" value={formData.consultantName} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
-                                    {CONSULTANTS.map(name => (
-                                        <option key={name} value={name}>{name}</option>
+                                <select name="consultantId" value={formData.consultantId} onChange={handleChange} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                                    {consultants.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -179,7 +208,7 @@ ${formData.consultantName}
                         </div>
                         {/* Signatures */}
                         <div className="mt-10 pt-6 border-t-2 border-dashed border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8 md:col-span-2">
-                            <SignaturePad title={`Firma de ${formData.consultantName}`} onSave={(data) => setFormData(prev => ({ ...prev, consultantSignature: data }))} signatureDataUrl={formData.consultantSignature} isSigned={!!formData.consultantSignature} />
+                            <SignaturePad title={`Firma de ${consultantName}`} onSave={(data) => setFormData(prev => ({ ...prev, consultantSignature: data }))} signatureDataUrl={formData.consultantSignature} isSigned={!!formData.consultantSignature} />
                             <SignaturePad title="Firma del Cliente (Conformidad)" onSave={(data) => setFormData(prev => ({ ...prev, clientSignature: data }))} signatureDataUrl={formData.clientSignature} isSigned={!!formData.clientSignature} />
                         </div>
                     </div>
