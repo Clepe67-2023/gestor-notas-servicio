@@ -1,1 +1,7 @@
-// Type definitions have been moved to the root vite-env.d.ts file.
+/// <reference types="vite/client" />
+
+declare var process: {
+  env: {
+    readonly API_KEY: string;
+  }
+}
