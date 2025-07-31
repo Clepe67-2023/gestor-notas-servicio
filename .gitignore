@@ -1,0 +1,6 @@
+# Archivos y carpetas generados por el sistema
+/node_modules
+/dist
+
+# Archivos de entorno
+.env

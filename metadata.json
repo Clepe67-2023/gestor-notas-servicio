@@ -1,0 +1,6 @@
+{
+  "name": "Copy of Gestor de Notas de Servicio",
+  "description": "Una aplicación para crear, gestionar y hacer seguimiento de las horas de servicio por cliente y proyecto. Incluye generación de notas de servicio, firmas digitales, resúmenes mensuales y asistencia de IA para la redacción de descripciones. Sin errores",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
