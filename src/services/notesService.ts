@@ -11,7 +11,7 @@ const NOTES_COLLECTION = 'serviceNotes';
 export const getNotesFromFirestore = async (): Promise<ServiceNote[]> => {
     try {
         const querySnapshot = await getDocs(collection(db, NOTES_COLLECTION));
-        const notes = querySnapshot.docs.map(doc => {
+        const notes = querySnapshot.forEach((doc: any) => {
             // Aseguramos que los datos se ajusten al tipo ServiceNote, incluyendo el id del documento
             return {
                 id: doc.id,
