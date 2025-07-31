@@ -17,9 +17,10 @@ interface ServiceNoteProps {
     clients: Client[];
     projects: Project[];
     consultants: Consultant[];
+    isSaving?: boolean;
 }
 
-const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave, clients, projects, consultants }) => {
+const ServiceNote: React.FC<ServiceNoteProps> = ({ note, onSave, clients, projects, consultants, isSaving = false }) => {
     const navigate = useNavigate();
     const printRef = useRef<HTMLDivElement>(null);
     
@@ -221,7 +222,7 @@ ${consultantName}
 
                 <div className="mt-8 flex justify-end space-x-4 no-print">
                     <Button type="button" variant="secondary" onClick={() => navigate('/')}>Cancelar</Button>
-                    <Button type="submit">Guardar Nota de Servicio</Button>
+                    <Button type="submit" isLoading={isSaving}>Guardar Nota de Servicio</Button>
                 </div>
             </form>
             

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { ServiceNote as ServiceNoteType, Client, Project, Consultant } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -7,161 +7,25 @@ import { COMPANY_NAME, COMPANY_LOGO } from './constants';
 import ServiceNote from './components/ServiceNote';
 import MonthlySummary from './components/MonthlySummary';
 import { v4 as uuidv4 } from 'uuid';
-import { PlusIcon, EditIcon, DeleteIcon } from './components/Icons';
-import Modal from './components/common/Modal';
+import { PlusIcon } from './components/Icons';
 import Button from './components/common/Button';
-
-// Generic Management Section Component
-interface ManagementField<T> {
-    name: keyof T;
-    label: string;
-    type?: 'text' | 'select';
-    placeholder?: string;
-    options?: { value: string; label: string }[];
-}
-
-interface ManagementSectionProps<T extends { id: string; name: string }> {
-    title: string;
-    items: T[];
-    setItems: (value: T[] | ((val: T[]) => T[])) => void;
-    fields: ManagementField<Partial<T>>[];
-    itemName: string;
-    getDisplayInfo: (item: T) => { name: string; details?: string };
-}
-
-const ManagementSection = <T extends { id: string; name: string }>({
-    title,
-    items,
-    setItems,
-    fields,
-    itemName,
-    getDisplayInfo,
-}: ManagementSectionProps<T>) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentItem, setCurrentItem] = useState<T | null>(null);
-    const [formData, setFormData] = useState<Partial<T>>({});
-
-    const openModal = (item: T | null = null) => {
-        setCurrentItem(item);
-        if (item) {
-            setFormData(item);
-        } else {
-            const initialFormData = fields.reduce((acc, field) => {
-                (acc as any)[field.name] = '';
-                return acc;
-            }, {} as Partial<T>);
-            setFormData(initialFormData);
-        }
-        setIsModalOpen(true);
-    };
-
-    const closeModal = () => {
-        setIsModalOpen(false);
-        setCurrentItem(null);
-        setFormData({});
-    };
-
-    const handleSave = () => {
-        const dataToSave: Partial<T> = { ...formData };
-        fields.forEach(field => {
-            if (field.type === 'select' && (dataToSave as any)[field.name] === '') {
-                (dataToSave as any)[field.name] = null;
-            }
-        });
-
-        if (currentItem) {
-            setItems(items.map(item => item.id === currentItem.id ? { ...item, ...dataToSave } : item));
-        } else {
-            setItems([...items, { ...dataToSave, id: uuidv4() } as T]);
-        }
-        closeModal();
-    };
-
-    const handleDelete = (id: string) => {
-        if (window.confirm(`¿Está seguro de que desea eliminar este ${itemName.toLowerCase()}?`)) {
-            setItems(items.filter(item => item.id !== id));
-        }
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-slate-700">{title}</h2>
-                <Button onClick={() => openModal()} className="py-1 px-3 text-sm">
-                    <PlusIcon className="w-4 h-4 mr-1" />
-                    Añadir {itemName}
-                </Button>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                {items.length > 0 ? (
-                    items.map(item => {
-                        const display = getDisplayInfo(item);
-                        return (
-                            <div key={item.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-md">
-                                <div>
-                                    <p className="font-medium text-slate-800">{display.name}</p>
-                                    {display.details && <p className="text-xs text-slate-500">{display.details}</p>}
-                                </div>
-                                <div className="space-x-2 flex items-center">
-                                    <button onClick={() => openModal(item)} className="text-slate-500 hover:text-blue-600"><EditIcon className="w-4 h-4"/></button>
-                                    <button onClick={() => handleDelete(item.id)} className="text-slate-500 hover:text-red-600"><DeleteIcon className="w-4 h-4"/></button>
-                                </div>
-                            </div>
-                        )
-                    })
-                ) : (
-                    <p className="text-center text-slate-500 py-4">No hay {itemName.toLowerCase()}s. Añada uno para empezar.</p>
-                )}
-            </div>
-            <Modal isOpen={isModalOpen} onClose={closeModal} title={`${currentItem ? 'Editar' : 'Añadir'} ${itemName}`}>
-                <div className="space-y-4">
-                    {fields.map(field => (
-                        <div key={field.name as string}>
-                            <label className="block text-sm font-medium text-slate-700">{field.label}</label>
-                             {field.type === 'select' ? (
-                                <select
-                                    name={field.name as string}
-                                    value={(formData as any)[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">{field.placeholder || 'Seleccionar...'}</option>
-                                    {field.options?.map(option => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    name={field.name as string}
-                                    value={(formData as any)[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                    className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            )}
-                        </div>
-                    ))}
-                    <div className="flex justify-end space-x-2">
-                        <Button variant="secondary" onClick={closeModal}>Cancelar</Button>
-                        <Button onClick={handleSave}>Guardar</Button>
-                    </div>
-                </div>
-            </Modal>
-        </div>
-    );
-};
+import ClientsManager from './components/ClientsManager';
+import ProjectsManager from './components/ProjectsManager';
+import ConsultantsManager from './components/ConsultantsManager';
+import { getNotesFromFirestore, saveNoteToFirestore } from './services/notesService';
 
 interface HomeProps {
     notes: ServiceNoteType[];
     clients: Client[];
-    setClients: (value: Client[] | ((val: Client[]) => Client[])) => void;
+    setClients: (value: Client[]) => void;
     projects: Project[];
-    setProjects: (value: Project[] | ((val: Project[]) => Project[])) => void;
+    setProjects: (value: Project[]) => void;
     consultants: Consultant[];
-    setConsultants: (value: Consultant[] | ((val: Consultant[]) => Consultant[])) => void;
+    setConsultants: (value: Consultant[]) => void;
+    isLoading: boolean;
 }
 
-const Home = ({ notes, clients, setClients, projects, setProjects, consultants, setConsultants }: HomeProps) => {
+const Home = ({ notes, clients, setClients, projects, setProjects, consultants, setConsultants, isLoading }: HomeProps) => {
     const getNoteDisplayData = (note: ServiceNoteType) => {
         const clientName = clients.find(c => c.id === note.clientId)?.name || 'Cliente no encontrado';
         const projectName = projects.find(p => p.id === note.projectId)?.name || 'Proyecto no encontrado';
@@ -182,48 +46,40 @@ const Home = ({ notes, clients, setClients, projects, setProjects, consultants, 
                     </Link>
                 </div>
                 <h2 className="text-xl font-semibold text-slate-700 mb-4">Notas de Servicio Recientes</h2>
-                <div className="space-y-4">
-                    {notes.length > 0 ? (
-                        [...notes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(note => {
-                            const { clientName, projectName, consultantName } = getNoteDisplayData(note);
-                            return (
-                                <Link to={`/note/${note.id}`} key={note.id} className="block p-4 bg-slate-50 border border-slate-200 rounded-lg hover:shadow-lg hover:border-blue-500 transition duration-300">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="font-bold text-lg text-slate-800">{clientName}</p>
-                                            <p className="text-sm text-slate-600">Proyecto: {projectName}</p>
-                                            <p className="text-xs text-slate-500 mt-1">Asesor: {consultantName}</p>
+                {isLoading ? <p className="text-center text-slate-500 py-8">Cargando notas...</p> : (
+                    <div className="space-y-4">
+                        {notes.length > 0 ? (
+                            [...notes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(note => {
+                                const { clientName, projectName, consultantName } = getNoteDisplayData(note);
+                                return (
+                                    <Link to={`/note/${note.id}`} key={note.id} className="block p-4 bg-slate-50 border border-slate-200 rounded-lg hover:shadow-lg hover:border-blue-500 transition duration-300">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-lg text-slate-800">{clientName}</p>
+                                                <p className="text-sm text-slate-600">Proyecto: {projectName}</p>
+                                                <p className="text-xs text-slate-500 mt-1">Asesor: {consultantName}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-slate-600">{new Date(note.date).toLocaleDateString()}</p>
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${note.format === 'Presencial' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                    {note.format}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-slate-600">{new Date(note.date).toLocaleDateString()}</p>
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${note.format === 'Presencial' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}`}>
-                                                {note.format}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            )
-                        })
-                    ) : (
-                        <p className="text-center text-slate-500 py-8">No hay notas de servicio. ¡Crea una para empezar!</p>
-                    )}
-                </div>
+                                    </Link>
+                                )
+                            })
+                        ) : (
+                            <p className="text-center text-slate-500 py-8">No hay notas de servicio. ¡Crea una para empezar!</p>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="max-w-5xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                <ManagementSection title="Clientes" items={clients} setItems={setClients} fields={[{ name: 'name', label: 'Nombre / Razón Social' }, { name: 'rut', label: 'RUT' }]} itemName="Cliente" getDisplayInfo={(item) => ({ name: item.name, details: `RUT: ${item.rut}` })} />
-                <ManagementSection 
-                    title="Proyectos" 
-                    items={projects} 
-                    setItems={setProjects} 
-                    fields={[
-                        { name: 'name', label: 'Nombre del Proyecto' },
-                        { name: 'clientId', label: 'Cliente Asociado (Opcional)', type: 'select', placeholder: 'Ningún cliente específico', options: clients.map(c => ({value: c.id, label: c.name}))}
-                    ]} 
-                    itemName="Proyecto"
-                    getDisplayInfo={(item) => ({ name: item.name, details: item.clientId ? `Cliente: ${clients.find(c => c.id === item.clientId)?.name || 'N/A'}` : 'Sin cliente asociado' })}
-                 />
-                <ManagementSection title="Asesores" items={consultants} setItems={setConsultants} fields={[{ name: 'name', label: 'Nombre del Asesor' }]} itemName="Asesor" getDisplayInfo={(item) => ({ name: item.name })} />
+                <ClientsManager clients={clients} setClients={setClients} />
+                <ProjectsManager projects={projects} setProjects={setProjects} clients={clients} />
+                <ConsultantsManager consultants={consultants} setConsultants={setConsultants} />
             </div>
         </div>
     );
@@ -241,31 +97,64 @@ const ServiceNoteWrapper = ({ notes, setNotes, clients, projects, consultants }:
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const isNew = id === 'new';
+    const [isSaving, setIsSaving] = useState(false);
 
     const note = isNew ? undefined : notes.find(n => n.id === id);
 
-    const handleSave = (noteToSave: Omit<ServiceNoteType, 'id'>) => {
-        if (isNew) {
-            setNotes([...notes, { ...noteToSave, id: uuidv4() }]);
-        } else {
-            setNotes(notes.map((n: ServiceNoteType) => (n.id === id ? { ...noteToSave, id: id! } : n)));
+    const handleSave = async (noteData: Omit<ServiceNoteType, 'id'>) => {
+        setIsSaving(true);
+        const noteToSave: ServiceNoteType = isNew
+            ? { ...noteData, id: uuidv4() }
+            : { ...noteData, id: id! };
+
+        try {
+            await saveNoteToFirestore(noteToSave);
+            
+            if (isNew) {
+                setNotes(prev => [...prev, noteToSave]);
+            } else {
+                setNotes(prev => prev.map(n => n.id === id ? noteToSave : n));
+            }
+            navigate('/');
+
+        } catch (error) {
+            console.error("Failed to save note: ", error);
+            alert("Error al guardar la nota. Por favor, revise la consola para más detalles e inténtelo de nuevo.");
+        } finally {
+            setIsSaving(false);
         }
-        navigate('/');
     };
 
     if (!isNew && !note) {
         return <div className="text-center p-8 text-red-500">Nota de servicio no encontrada.</div>;
     }
 
-    return <ServiceNote note={note} onSave={handleSave} clients={clients} projects={projects} consultants={consultants} />;
+    return <ServiceNote note={note} onSave={handleSave} clients={clients} projects={projects} consultants={consultants} isSaving={isSaving} />;
 };
 
 
 const App: React.FC = () => {
-    const [notes, setNotes] = useLocalStorage<ServiceNoteType[]>('serviceNotes', []);
+    const [notes, setNotes] = useState<ServiceNoteType[]>([]);
+    const [isLoadingNotes, setIsLoadingNotes] = useState(true);
     const [clients, setClients] = useLocalStorage<Client[]>('clients', []);
     const [projects, setProjects] = useLocalStorage<Project[]>('projects', []);
     const [consultants, setConsultants] = useLocalStorage<Consultant[]>('consultants', []);
+
+    useEffect(() => {
+        const loadNotes = async () => {
+            setIsLoadingNotes(true);
+            try {
+                const fetchedNotes = await getNotesFromFirestore();
+                setNotes(fetchedNotes);
+            } catch (error) {
+                console.error("Error loading notes from Firestore: ", error);
+                alert("No se pudieron cargar las notas. Verifique su configuración de Firebase y la conexión a internet.");
+            } finally {
+                setIsLoadingNotes(false);
+            }
+        };
+        loadNotes();
+    }, []);
 
     return (
         <HashRouter>
@@ -286,7 +175,7 @@ const App: React.FC = () => {
                 </header>
                 <main>
                     <Routes>
-                        <Route path="/" element={<Home notes={notes} clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} consultants={consultants} setConsultants={setConsultants} />} />
+                        <Route path="/" element={<Home notes={notes} clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} consultants={consultants} setConsultants={setConsultants} isLoading={isLoadingNotes} />} />
                         <Route path="/note/:id" element={<ServiceNoteWrapper notes={notes} setNotes={setNotes} clients={clients} projects={projects} consultants={consultants} />} />
                         <Route path="/summary" element={<MonthlySummary notes={notes} clients={clients} projects={projects} consultants={consultants} />} />
                     </Routes>

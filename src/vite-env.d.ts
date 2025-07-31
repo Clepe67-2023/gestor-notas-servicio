@@ -1,8 +1,2 @@
-/// <reference types="vite/client" />
-
-declare var process: {
-  env: {
-    API_KEY: string;
-  };
-};
-
+// This file is intentionally left blank.
+// Environment type definitions are located in the root `vite-env.d.ts` file.

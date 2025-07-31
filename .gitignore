@@ -2,5 +2,5 @@
 /node_modules
 /dist
 
-# Archivos de entorno
-.env
+# Archivos de entorno (contienen claves secretas)
+.env.local
