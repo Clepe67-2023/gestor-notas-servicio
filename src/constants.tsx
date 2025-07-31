@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Consultant } from './types';
 
 // 1. CAMBIA EL NOMBRE DE TU EMPRESA AQUÍ
