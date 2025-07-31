@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    // ...pueden haber otras opciones aquí...
+    "types": ["vite/client"],
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
