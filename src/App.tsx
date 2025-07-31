@@ -17,11 +17,11 @@ import { getNotesFromFirestore, saveNoteToFirestore } from './services/notesServ
 interface HomeProps {
     notes: ServiceNoteType[];
     clients: Client[];
-    setClients: (value: Client[]) => void;
+    setClients: React.Dispatch<React.SetStateAction<Client[]>>;
     projects: Project[];
-    setProjects: (value: Project[]) => void;
+    setProjects: React.Dispatch<React.SetStateAction<Project[]>>; // <-- ASÍ ES CORRECTO
     consultants: Consultant[];
-    setConsultants: (value: Consultant[]) => void;
+    setConsultants: React.Dispatch<React.SetStateAction<Consultant[]>>; // <-- ASÍ ES CORRECTO
     isLoading: boolean;
 }
 

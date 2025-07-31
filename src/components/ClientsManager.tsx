@@ -8,7 +8,7 @@ import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
 
 interface ClientsManagerProps {
   clients: Client[];
-  setClients: (value: Client[] | ((val: Client[]) => Client[])) => void;
+  setClients: React.Dispatch<React.SetStateAction<Client[]>>;
 }
 
 const ClientsManager: React.FC<ClientsManagerProps> = ({ clients, setClients }) => {

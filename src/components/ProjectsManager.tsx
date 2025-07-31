@@ -8,7 +8,7 @@ import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
 
 interface ProjectsManagerProps {
   projects: Project[];
-  setProjects: (value: Project[] | ((val: Project[]) => Project[])) => void;
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>; // <-- ASÍ ES CORRECTO
   clients: Client[];
 }
 

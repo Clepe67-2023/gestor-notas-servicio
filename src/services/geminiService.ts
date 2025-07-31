@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Accede a la clave de API desde las variables de entorno.
 // Esto es configurado en vite.config.ts para funcionar en el navegador.
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 let ai: GoogleGenAI | null = null;
 let initError = '';

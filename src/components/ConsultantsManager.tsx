@@ -8,7 +8,7 @@ import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
 
 interface ConsultantsManagerProps {
   consultants: Consultant[];
-  setConsultants: (value: Consultant[] | ((val: Consultant[]) => Consultant[])) => void;
+  setConsultants: React.Dispatch<React.SetStateAction<Consultant[]>>; // <-- ASÍ ES CORRECTO
 }
 
 const ConsultantsManager: React.FC<ConsultantsManagerProps> = ({ consultants, setConsultants }) => {
